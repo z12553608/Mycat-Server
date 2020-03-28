@@ -1,0 +1,4 @@
+2020-03-24 13:19:03: [dataHost=localhost1, dataSource=hostM1,statue=ok status -> error status]
+2020-03-24 13:19:32: [dataHost=localhost1, dataSource=hostM1,statue=error status -> ok status]
+2020-03-24 13:37:32: [dataHost=localhost1, dataSource=hostM1,statue=ok status -> error status]
+2020-03-24 13:37:43: [dataHost=localhost1, dataSource=hostM1,statue=error status -> ok status]
