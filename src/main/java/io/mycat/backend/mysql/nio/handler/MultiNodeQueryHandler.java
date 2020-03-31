@@ -209,7 +209,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 						LOGGER.debug("node.getRunOnSlave()-" + node.getRunOnSlave());
 			            LOGGER.debug(new StringBuilder(this.toString()).append(session.getSource()).append(rrs).toString());
 					}
-					node.setRunOnSlave(rrs.getRunOnSlave());	// 实现 master/slave注解	
+					node.setRunOnSlave(rrs.getRunOnSlave());	// 实现 master/slave注解
 					if(LOGGER.isDebugEnabled()) {
 						LOGGER.debug("node.getRunOnSlave()-" + node.getRunOnSlave());
 					}
@@ -225,7 +225,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					// 这是通过 上面方法的 this 参数的层层传递完成的。
 					// connectionAcquired 进行执行操作:
 					// session.bindConnection(node, conn);
-					// _execute(conn, node); 
+					// _execute(conn, node);
 				}
 				start++;
 			}
@@ -262,7 +262,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 				.getAttachment();
 		session.bindConnection(node, conn);
 		if(errorRepsponsed.get()) {
-			ServerConnection source = session.getSource();			
+			ServerConnection source = session.getSource();
 			LOGGER.warn(new StringBuilder(this.toString()).append(source).append(rrs).toString(), "connectionAcquired",conn);
 			this.connectionClose(conn, "find error, so close this connection");
 			return ;
@@ -362,7 +362,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 						ok.insertId = rrs.getAutoIncrement() ? (insertId - affectedRows + 1) : insertId;
 						source.setLastInsertId(insertId);
 					}
-					//  判断是否已经报错返回给前台了 2018.07 
+					//  判断是否已经报错返回给前台了 2018.07
 					if(source.canResponse()) {
 						ok.write(source);
 					}
@@ -576,7 +576,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			if(source.canResponse()) {
 				source.write(byteBuffer);
 			}
-			
+
 		}
 
 
@@ -666,7 +666,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 	@Override
 	public void fieldEofResponse(byte[] header, List<byte[]> fields,
 			byte[] eof, BackendConnection conn) {
-		
+
 		//10个连接有一个连接错误怎么办哦。
 		if (errorRepsponsed.get()|| this.isFail()) {
 			// the connection has been closed or set to "txInterrupt" properly
@@ -677,7 +677,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			// conn.close(this.error);
 			return;
 		}
-		
+
 		//huangyiming add
 		this.header = header;
 		this.fields = fields;
@@ -897,7 +897,8 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					}
 					BinaryRowDataPacket binRowDataPk = new BinaryRowDataPacket();
 					binRowDataPk.read(fieldPackets, rowDataPkg);
-					binRowDataPk.write(session.getSource());
+					//binRowDataPk.write(session.getSource());
+					session.getSource().write(row);
 				} else {
 					//add huangyiming
 					MiddlerResultHandler middlerResultHandler = session.getMiddlerResultHandler();
