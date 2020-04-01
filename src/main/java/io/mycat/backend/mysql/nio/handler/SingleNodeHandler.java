@@ -407,7 +407,8 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 		QueryResult queryResult = new QueryResult(session.getSource().getUser(), 
 				rrs.getSqlType(), rrs.getStatement(), affectedRows, netInBytes, netOutBytes, startTime, System.currentTimeMillis(),resultSize, source.getHost());
 		QueryResultDispatcher.dispatchQuery( queryResult );
-		
+
+		recycleResources();
 	}
 
 	/**
@@ -483,6 +484,7 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 		}
 
 		source.write(buffer);
+		recycleResources();
 	}
 
 	/**
@@ -524,6 +526,7 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 			 */
 			//buffer = binRowDataPk.write(buffer, session.getSource(), true);
 			session.getSource().write(buffer);
+			recycleResources();
 		} else {
 
 			MiddlerResultHandler middlerResultHandler = session.getMiddlerResultHandler();
@@ -538,8 +541,6 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 			}
 
 		}
-
-
 	}
 
 	@Override
