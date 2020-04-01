@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author mycat, CrazyPig, zhuam
@@ -83,13 +84,6 @@ public class ServerPrepareHandler implements FrontendPrepareHandler {
     //    private static final Map<String, PreparedStatement> pstmtForSql = new ConcurrentHashMap<>();
     private static final Map<Long, PreparedStatement> pstmtForId = new ConcurrentHashMap<>();
     private int maxPreparedStmtCount;
-
-    // 是否为prepareStatement
-    private static AtomicBoolean atomicPrepare = new AtomicBoolean(false);
-
-    public static AtomicBoolean getAtomicPrepare() {
-        return atomicPrepare;
-    }
 
     public ServerPrepareHandler(ServerConnection source, int maxPreparedStmtCount) {
         this.source = source;
@@ -180,8 +174,6 @@ public class ServerPrepareHandler implements FrontendPrepareHandler {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("execute prepare sql: " + sql);
             }
-            // 设置是否是流式查询
-            atomicPrepare.set(true);
             source.query(sql);
         }
     }

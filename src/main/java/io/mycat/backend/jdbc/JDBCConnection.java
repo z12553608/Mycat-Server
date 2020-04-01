@@ -661,18 +661,10 @@ public class JDBCConnection implements BackendConnection {
         Statement stmt = null;
 
         try {
-            if (ServerPrepareHandler.getAtomicPrepare().compareAndSet(true,false)) {
-                stmt = con.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-                stmt.setFetchSize(Integer.MIN_VALUE);
+            stmt = con.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            stmt.setFetchSize(Integer.MIN_VALUE);
 
-                rs = ((PreparedStatement) stmt).executeQuery();
-            } else {
-                stmt = con.createStatement();
-                if (sc.getSqlSelectLimit() > 0) {
-                    stmt.setMaxRows(sc.getSqlSelectLimit());
-                }
-                rs = stmt.executeQuery(sql);
-            }
+            rs = ((PreparedStatement) stmt).executeQuery();
 
             List<FieldPacket> fieldPks = new LinkedList<FieldPacket>();
             ResultSetUtil.resultSetToFieldPacket(sc.getCharset(), fieldPks, rs,
