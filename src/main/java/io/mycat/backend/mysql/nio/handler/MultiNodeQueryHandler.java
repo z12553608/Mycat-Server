@@ -452,7 +452,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					}
  				} finally {
 					lock.unlock();
-
+					clearResources();
 				}
 			}
 		}
@@ -485,7 +485,6 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 				isMiddleResultDone.set(false);
 			}
 		}
-
 	}
 
 	/**
@@ -819,6 +818,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			handleDataProcessException(e);
 		} finally {
 			lock.unlock();
+			clearResources();
 		}
 	}
 
@@ -897,8 +897,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					}
 					BinaryRowDataPacket binRowDataPk = new BinaryRowDataPacket();
 					binRowDataPk.read(fieldPackets, rowDataPkg);
-					//binRowDataPk.write(session.getSource());
-					session.getSource().write(row);
+					binRowDataPk.write(session.getSource());
 				} else {
 					//add huangyiming
 					MiddlerResultHandler middlerResultHandler = session.getMiddlerResultHandler();
@@ -919,6 +918,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			handleDataProcessException(e);
 		} finally {
 			lock.unlock();
+			clearResources();
 		}
 	}
 
