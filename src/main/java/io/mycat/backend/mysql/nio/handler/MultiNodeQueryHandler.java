@@ -899,6 +899,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					binRowDataPk.read(fieldPackets, rowDataPkg);
 					//binRowDataPk.write(session.getSource());
 					session.getSource().write(row);
+					System.gc();
 				} else {
 					//add huangyiming
 					MiddlerResultHandler middlerResultHandler = session.getMiddlerResultHandler();
