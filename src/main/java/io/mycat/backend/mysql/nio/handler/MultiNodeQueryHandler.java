@@ -131,18 +131,18 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 		this.rrs = rrs;
 		isOffHeapuseOffHeapForMerge = MycatServer.getInstance().
 				getConfig().getSystem().getUseOffHeapForMerge();
-		if (ServerParse.SELECT == sqlType && rrs.needMerge()) {
-			/**
-			 * 使用Off Heap
-			 */
-			if(isOffHeapuseOffHeapForMerge == 1){
-				dataMergeSvr = new DataNodeMergeManager(this,rrs,isMiddleResultDone);
-			}else {
-				dataMergeSvr = new DataMergeService(this,rrs);
-			}
-		} else {
+//		if (ServerParse.SELECT == sqlType && rrs.needMerge()) {
+//			/**
+//			 * 使用Off Heap
+//			 */
+//			if(isOffHeapuseOffHeapForMerge == 1){
+//				dataMergeSvr = new DataNodeMergeManager(this,rrs,isMiddleResultDone);
+//			}else {
+//				dataMergeSvr = new DataMergeService(this,rrs);
+//			}
+//		} else {
 			dataMergeSvr = null;
-		}
+//		}
 
 		isCallProcedure = rrs.isCallStatement();
 		this.autocommit = session.getSource().isAutocommit();
