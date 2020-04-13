@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
 import io.mycat.server.handler.ServerPrepareHandler;
 import org.slf4j.Logger;
@@ -71,7 +70,6 @@ public class JDBCConnection implements BackendConnection {
 
     private volatile int sqlSelectLimit = -1;
 
-    private final ReentrantLock lock;
 
     public NIOProcessor getProcessor() {
         return processor;
@@ -83,8 +81,6 @@ public class JDBCConnection implements BackendConnection {
 
     public JDBCConnection() {
         startTime = System.currentTimeMillis();
-
-        lock=new ReentrantLock();
     }
 
     public Connection getCon() {
@@ -670,8 +666,6 @@ public class JDBCConnection implements BackendConnection {
 
             rs = ((PreparedStatement) stmt).executeQuery();
 
-            lock.lock();
-
             List<FieldPacket> fieldPks = new LinkedList<FieldPacket>();
             ResultSetUtil.resultSetToFieldPacket(sc.getCharset(), fieldPks, rs,
                     this.isSpark);
@@ -761,8 +755,6 @@ public class JDBCConnection implements BackendConnection {
 
                 }
             }
-
-            lock.unlock();
         }
     }
 
