@@ -700,9 +700,11 @@ public class JDBCConnection implements BackendConnection {
             byteBuf.get(eof);
             byteBuf.clear();
             this.respHandler.fieldEofResponse(header, fields, eof, this);
+            sc.recycle(byteBuf);
 
             // output row
             while (rs.next()) {
+                byteBuf = sc.allocate();
                 RowDataPacket curRow = new RowDataPacket(colunmCount);
                 for (int i = 0; i < colunmCount; i++) {
                     int j = i + 1;
@@ -727,11 +729,13 @@ public class JDBCConnection implements BackendConnection {
                 byteBuf.get(row);
                 byteBuf.clear();
                 this.respHandler.rowResponse(row, this);
+                sc.recycle(byteBuf);
             }
 
             fieldPks.clear();
 
             // end row
+            byteBuf = sc.allocate();
             eofPckg = new EOFPacket();
             eofPckg.packetId = ++packetId;
             byteBuf = eofPckg.write(byteBuf, sc, false);
