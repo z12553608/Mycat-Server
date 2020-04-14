@@ -814,6 +814,8 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 				dataMergeSvr.onRowMetaData(columToIndx, fieldCount);
 
 			}
+
+			session.getSource().recycle(buffer);
 		} catch (Exception e) {
 			handleDataProcessException(e);
 		} finally {
