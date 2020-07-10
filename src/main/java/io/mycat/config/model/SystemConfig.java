@@ -261,13 +261,43 @@ public final class SystemConfig {
 	private final static int DEFAULT_NONEPASSWORDLOGIN = 0;
 
 	private int parallExecute;
-	
+
+	private int blockingWriteQueueSize=5;
+
+	private int blockingWriteQueueSleepTime=1000;
+
+	private boolean useStreamSort=true;
+
+	public int getBlockingWriteQueueSize() {
+		return blockingWriteQueueSize;
+	}
+
+	public void setBlockingWriteQueueSize(int blockingWriteQueueSize) {
+		this.blockingWriteQueueSize = blockingWriteQueueSize;
+	}
+
+	public int getBlockingWriteQueueSleepTime() {
+		return blockingWriteQueueSleepTime;
+	}
+
+	public void setBlockingWriteQueueSleepTime(int blockingWriteQueueSleepTime) {
+		this.blockingWriteQueueSleepTime = blockingWriteQueueSleepTime;
+	}
+
 	public String getDefaultSqlParser() {
 		return defaultSqlParser;
 	}
 
 	public void setDefaultSqlParser(String defaultSqlParser) {
 		this.defaultSqlParser = defaultSqlParser;
+	}
+
+	public boolean isUseStreamSort() {
+		return useStreamSort;
+	}
+
+	public void setUseStreamSort(boolean useStreamSort) {
+		this.useStreamSort = useStreamSort;
 	}
 
 	public SystemConfig() {

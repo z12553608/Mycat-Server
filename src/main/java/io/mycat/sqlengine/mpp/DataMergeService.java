@@ -187,6 +187,57 @@ public class DataMergeService extends AbstractDataNodeMerge {
 	}
 
 	@Override
+	public void handle(PackWraper pack) {
+		running.compareAndSet(false, true);
+
+		lock.lock();
+
+		try{
+			if(pack == null){
+				return;
+			}
+
+			if (pack == END_FLAG_PACK) {
+
+				final int warningCount = 0;
+				final EOFPacket eofp   = new EOFPacket();
+				final ByteBuffer eof   = ByteBuffer.allocate(9);
+				BufferUtil.writeUB3(eof, eofp.calcPacketSize());
+				eof.put(eofp.packetId);
+				eof.put(eofp.fieldCount);
+				BufferUtil.writeUB2(eof, warningCount);
+				BufferUtil.writeUB2(eof, eofp.status);
+				final ServerConnection source = multiQueryHandler.getSession().getSource();
+				final byte[] array = eof.array();
+				multiQueryHandler.outputMergeResult(source, array, getResults(array));
+
+				running.set(false);
+
+				return;
+			}
+
+			// merge: sort-or-group, or simple add
+			final RowDataPacket row = new RowDataPacket(fieldCount);
+			row.read(pack.rowData);
+
+			if (grouper != null) {
+				grouper.addRow(row);
+			} else if (sorter != null) {
+				if (!sorter.addRow(row)) {
+					canDiscard.put(pack.dataNode,true);
+				}
+			} else {
+				//result.get(pack.dataNode).add(row);
+				multiQueryHandler.handleSingleMergeResult(row);
+			}
+		}catch(final Exception e){
+			multiQueryHandler.handleDataProcessException(e);
+		}finally {
+			lock.unlock();
+		}
+	}
+
+	@Override
 	public void run() {
 		// sort-or-group: no need for us to using multi-threads, because
 		//both sorter and group are synchronized!!
@@ -241,7 +292,8 @@ public class DataMergeService extends AbstractDataNodeMerge {
 						canDiscard.put(pack.dataNode,true);
 					}
 				} else {
-					result.get(pack.dataNode).add(row);
+					//result.get(pack.dataNode).add(row);
+					multiQueryHandler.handleSingleMergeResult(row);
 				}
 			}// rof
 		}catch(final Exception e){

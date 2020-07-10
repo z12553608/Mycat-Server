@@ -481,6 +481,8 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 				buffer = row.write(buffer, source, true);
 			}
 		}
+
+		source.write(buffer);
 	}
 
 	/**
@@ -514,18 +516,18 @@ public class SingleNodeHandler implements ResponseHandler, Terminatable, LoadDat
 			BinaryRowDataPacket binRowDataPk = new BinaryRowDataPacket();
 			binRowDataPk.read(fieldPackets, rowDataPk);
 			binRowDataPk.packetId = rowDataPk.packetId;
-//			binRowDataPk.write(session.getSource());
+			binRowDataPk.write(session.getSource());
 			/*
 			 * [fix bug] : 这里不能直接将包写到前端连接,
 			 * 因为在fieldEofResponse()方法结束后buffer还没写出,
 			 * 所以这里应该将包数据顺序写入buffer(如果buffer满了就写出),然后再将buffer写出
 			 */
-			buffer = binRowDataPk.write(buffer, session.getSource(), true);
+			//buffer = binRowDataPk.write(buffer, session.getSource(), true);
 		} else {
 
 			MiddlerResultHandler middlerResultHandler = session.getMiddlerResultHandler();
 	        if(null ==middlerResultHandler ){
-	        	 buffer = session.getSource().writeToBuffer(row, allocBuffer());
+	        	 session.getSource().write(row);
 			}else{
 		        if(middlerResultHandler instanceof MiddlerQueryResultHandler){
 		        	byte[] rv = ResultSetUtil.getColumnVal(row, fields, 0);

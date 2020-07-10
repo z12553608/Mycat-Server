@@ -5,6 +5,8 @@ package io.mycat.memory.unsafe.utils.sort;
 import com.google.common.annotations.VisibleForTesting;
 
 import io.mycat.MycatServer;
+import io.mycat.config.MycatConfig;
+import io.mycat.config.model.SystemConfig;
 import io.mycat.memory.unsafe.Platform;
 import io.mycat.memory.unsafe.array.LongArray;
 import io.mycat.memory.unsafe.memory.MemoryBlock;
@@ -503,6 +505,13 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
 
   public UnsafeSorterIterator getSortedIterator() throws IOException {
     assert(recordComparator != null);
+
+    if(MycatServer.getInstance().getConfig().getSystem().isUseStreamSort()){
+      UnsafeStreamSorter streamSorter=new UnsafeStreamSorter(recordComparator,prefixComparator);
+      streamSorter.addSorterIterator(inMemSorter.getSortedIterator());
+      return streamSorter.getSortedIterator();
+    }
+
     if (spillWriters.isEmpty()) {
       assert(inMemSorter != null);
       readingIterator = new SpillableIterator(inMemSorter.getSortedIterator());

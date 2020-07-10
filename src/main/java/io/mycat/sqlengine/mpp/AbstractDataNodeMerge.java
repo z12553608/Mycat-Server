@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by zagnix on 2016/7/6.
@@ -57,6 +58,8 @@ public abstract class AbstractDataNodeMerge implements Runnable{
      */
     protected final AtomicBoolean running = new AtomicBoolean(false);
 
+    protected ReentrantLock lock = new ReentrantLock();
+
     public AbstractDataNodeMerge(MultiNodeQueryHandler handler,RouteResultset rrs){
         this.rrs = rrs;
         this.multiQueryHandler = handler;
@@ -79,7 +82,7 @@ public abstract class AbstractDataNodeMerge implements Runnable{
      * @since 2016-03-23
      */
     protected final boolean addPack(final PackWraper pack){
-        packs.add(pack);
+        handle(pack);
         if(running.get()){
             return false;
         }
@@ -132,6 +135,8 @@ public abstract class AbstractDataNodeMerge implements Runnable{
 
     @Override
     public abstract void run();
+
+    public abstract void handle(PackWraper pack);
 
     public abstract void onRowMetaData(Map<String, ColMeta> columToIndx, int fieldCount) throws IOException;
 

@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
+import com.mysql.jdbc.PreparedStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -692,11 +693,10 @@ public class JDBCConnection implements BackendConnection {
         Statement stmt = null;
 
 		try {
-			stmt = con.createStatement();
-			if (sc.getSqlSelectLimit() > 0) {
-				stmt.setMaxRows(sc.getSqlSelectLimit());
-			}
-			rs = stmt.executeQuery(sql);
+		    stmt = con.prepareStatement(sql,ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+			stmt.setFetchSize(Integer.MIN_VALUE);
+
+			rs = ((PreparedStatement)stmt).executeQuery();
 
 			List<FieldPacket> fieldPks = new LinkedList<FieldPacket>();
 			ResultSetUtil.resultSetToFieldPacket(sc.getCharset(), fieldPks, rs,

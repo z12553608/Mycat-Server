@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
+import io.mycat.config.model.SystemConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -494,7 +495,7 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 	 * @param eof
 	 * @param
 	 */
-	public void outputMergeResult(final ServerConnection source, final byte[] eof, Iterator<UnsafeRow> iter,AtomicBoolean isMiddleResultDone) {
+	public void outputMergeResult(final ServerConnection source, final byte[] eof, Iterator<UnsafeRow> iter,AtomicBoolean isMiddleResultDone,boolean isGroupOrSort) {
 
 		try {
 			lock.lock();
@@ -515,30 +516,32 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			if (rrs.getLimitSize() < 0)
 				end = Integer.MAX_VALUE;
 
-			if(prepared) {
- 				while (iter.hasNext()){
-					UnsafeRow row = iter.next();
-					if(index >= start){
-						row.packetId = ++packetId;
-						BinaryRowDataPacket binRowPacket = new BinaryRowDataPacket();
-						binRowPacket.read(fieldPackets, row);
-						buffer = binRowPacket.write(buffer, source, true);
+			if(isGroupOrSort) {
+				if (prepared) {
+					while (iter.hasNext()) {
+						UnsafeRow row = iter.next();
+						if (index >= start) {
+							row.packetId = ++packetId;
+							BinaryRowDataPacket binRowPacket = new BinaryRowDataPacket();
+							binRowPacket.read(fieldPackets, row);
+							binRowPacket.write(source);
+						}
+						index++;
+						if (index == end) {
+							break;
+						}
 					}
-					index++;
-					if(index == end){
-						break;
-					}
-				}
-			} else {
-				while (iter.hasNext()){
-					UnsafeRow row = iter.next();
-					if(index >= start){
-						row.packetId = ++packetId;
-						buffer = row.write(buffer,source,true);
-					}
-					index++;
-					if(index == end){
-						break;
+				} else {
+					while (iter.hasNext()) {
+						UnsafeRow row = iter.next();
+						if (index >= start) {
+							row.packetId = ++packetId;
+							buffer = row.write(buffer, source, true);
+						}
+						index++;
+						if (index == end) {
+							break;
+						}
 					}
 				}
 			}
@@ -588,6 +591,49 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			dataMergeSvr.clear();
 		}
 	}
+
+	public void handleSingleMergeResult(UnsafeRow iter){
+		final RouteResultset rrs = this.dataMergeSvr.getRrs();
+		final ServerConnection source=getSession().getSource();
+
+		/**
+		 * 处理limit语句的start 和 end位置，将正确的结果发送给
+		 * Mycat 客户端
+		 */
+		int start = rrs.getLimitStart();
+		int end = start + rrs.getLimitSize();
+
+		if (start < 0)
+			start = 0;
+
+		if (rrs.getLimitSize() < 0)
+			end = Integer.MAX_VALUE;
+
+		if(index >= end){
+			return;
+		}
+
+		if(prepared) {
+			UnsafeRow row = iter;
+			if(index >= start){
+				row.packetId = ++packetId;
+				BinaryRowDataPacket binRowPacket = new BinaryRowDataPacket();
+				binRowPacket.read(fieldPackets, row);
+				binRowPacket.write(source);
+			}
+		} else {
+			UnsafeRow row = iter;
+			if(index >= start){
+				ByteBuffer buffer = session.getSource().allocate();
+				row.packetId = ++packetId;
+				buffer = row.write(buffer,source,true);
+				source.write(buffer);
+			}
+		}
+
+		index++;
+	}
+
 	public void outputMergeResult(final ServerConnection source,
 			final byte[] eof, List<RowDataPacket> results) {
 		try {
@@ -636,14 +682,14 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 					BinaryRowDataPacket binRowDataPk = new BinaryRowDataPacket();
 					binRowDataPk.read(fieldPackets, row);
 					binRowDataPk.packetId = ++packetId;
-					//binRowDataPk.write(source);
-					buffer = binRowDataPk.write(buffer, session.getSource(), true);
+					binRowDataPk.write(source);
 				}
 			} else {
 				for (int i = start; i < end; i++) {
 					RowDataPacket row = results.get(i);
 					row.packetId = ++packetId;
 					buffer = row.write(buffer, source, true);
+					source.write(buffer);
 				}
 			}
 
@@ -661,6 +707,38 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			lock.unlock();
 			dataMergeSvr.clear();
 		}
+	}
+
+	public void handleSingleMergeResult(RowDataPacket singleResult){
+		final ServerConnection source=getSession().getSource();
+
+		// 处理limit语句
+		int start = rrs.getLimitStart();
+		int end = start + rrs.getLimitSize();
+
+		if (start < 0) {
+			start = 0;
+		}
+
+		if(index>=end){
+			return;
+		}
+
+		if(prepared) {
+		    RowDataPacket row = singleResult;
+		    BinaryRowDataPacket binRowDataPk = new BinaryRowDataPacket();
+		    binRowDataPk.read(fieldPackets, row);
+		    binRowDataPk.packetId = ++packetId;
+		    binRowDataPk.write(source);
+		} else {
+			ByteBuffer buffer = session.getSource().allocate();
+		    RowDataPacket row = singleResult;
+		    row.packetId = ++packetId;
+		    buffer = row.write(buffer, source, true);
+		    source.write(buffer);
+		}
+
+		index++;
 	}
 
 	@Override
@@ -853,6 +931,14 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			return;
 		}
 
+		SystemConfig systemConfig=MycatServer.getInstance().getConfig().getSystem();
+		while(session.getSource().getWriteQueue().size()>systemConfig.getBlockingWriteQueueSize()) {
+			try {
+				Thread.sleep(systemConfig.getBlockingWriteQueueSleepTime());
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage());
+			}
+		}
 
 		lock.lock();
 		try {

@@ -52,7 +52,7 @@
 			<!--
 			off heap for merge/order/group/limit      1开启   0关闭
 		-->
-		<property name="useOffHeapForMerge">0</property>
+		<property name="useOffHeapForMerge">1</property>
 
 		<!--
 			单位为m
@@ -86,6 +86,13 @@
 		<property name="useZKSwitch">true</property>
 		<!--如果为0的话,涉及多个DataNode的catlet任务不会跨线程执行-->
 		<property name="parallExecute">0</property>
+
+		<!--前40秒阻塞不读取writeQueue最大Size-->
+		<property name="blockingWriteQueueSize">5</property>
+		<!--前40秒阻塞不读取一次线程休眠时间-->
+		<property name="blockingWriteQueueSleepTime">1000</property>
+		<!--流式合并排序功能-->
+		<property name="useStreamSort">true</property>
 	</system>
 	
 	<!-- 全局SQL防火墙设置 -->
