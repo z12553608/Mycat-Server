@@ -188,10 +188,6 @@ public class DataMergeService extends AbstractDataNodeMerge {
 
 	@Override
 	public void handle(PackWraper pack) {
-		running.compareAndSet(false, true);
-
-		lock.lock();
-
 		try{
 			if(pack == null){
 				return;
@@ -211,8 +207,6 @@ public class DataMergeService extends AbstractDataNodeMerge {
 				final byte[] array = eof.array();
 				multiQueryHandler.outputMergeResult(source, array, getResults(array));
 
-				running.set(false);
-
 				return;
 			}
 
@@ -227,90 +221,12 @@ public class DataMergeService extends AbstractDataNodeMerge {
 					canDiscard.put(pack.dataNode,true);
 				}
 			} else {
-				//result.get(pack.dataNode).add(row);
 				multiQueryHandler.handleSingleMergeResult(row);
 			}
 		}catch(final Exception e){
 			multiQueryHandler.handleDataProcessException(e);
-		}finally {
-			lock.unlock();
 		}
 	}
-
-	@Override
-	public void run() {
-		// sort-or-group: no need for us to using multi-threads, because
-		//both sorter and group are synchronized!!
-		// @author Uncle-pan
-		// @since 2016-03-23
-		if(!running.compareAndSet(false, true)){
-			return;
-		}
-		// eof handler has been placed to "if (pack == END_FLAG_PACK){}" in for-statement
-		// @author Uncle-pan
-		// @since 2016-03-23
-		boolean nulpack = false;
-		try{
-			// loop-on-packs
-			for (; ; ) {
-				final PackWraper pack = packs.poll();
-				// async: handling row pack queue, this business thread should exit when no pack
-				// @author Uncle-pan
-				// @since 2016-03-23
-				if(pack == null){
-					nulpack = true;
-					break;
-				}
-				// eof: handling eof pack and exit
-				if (pack == END_FLAG_PACK) {
-
-
-
-					final int warningCount = 0;
-					final EOFPacket eofp   = new EOFPacket();
-					final ByteBuffer eof   = ByteBuffer.allocate(9);
-					BufferUtil.writeUB3(eof, eofp.calcPacketSize());
-					eof.put(eofp.packetId);
-					eof.put(eofp.fieldCount);
-					BufferUtil.writeUB2(eof, warningCount);
-					BufferUtil.writeUB2(eof, eofp.status);
-					final ServerConnection source = multiQueryHandler.getSession().getSource();
-					final byte[] array = eof.array();
-					multiQueryHandler.outputMergeResult(source, array, getResults(array));
-					break;
-				}
-
-
-				// merge: sort-or-group, or simple add
-				final RowDataPacket row = new RowDataPacket(fieldCount);
-				row.read(pack.rowData);
-
-				if (grouper != null) {
-					grouper.addRow(row);
-				} else if (sorter != null) {
-					if (!sorter.addRow(row)) {
-						canDiscard.put(pack.dataNode,true);
-					}
-				} else {
-					//result.get(pack.dataNode).add(row);
-					multiQueryHandler.handleSingleMergeResult(row);
-				}
-			}// rof
-		}catch(final Exception e){
-			multiQueryHandler.handleDataProcessException(e);
-		}finally{
-			running.set(false);
-		}
-		// try to check packs, it's possible that adding a pack after polling a null pack
-		//and before this time pointer!!
-		// @author Uncle-pan
-		// @since 2016-03-23
-		if(nulpack && !packs.isEmpty()){
-			this.run();
-		}
-	}
-	
-
 
 	/**
 	 * return merged data

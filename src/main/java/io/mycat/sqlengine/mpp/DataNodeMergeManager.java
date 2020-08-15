@@ -349,10 +349,6 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
 
     @Override
     public void handle(PackWraper pack){
-        running.compareAndSet(false, true);
-
-        lock.lock();
-
         try{
             if(clearStatus == ClearStatusEnum.PREPARE_CLEAR
                     || clearStatus == ClearStatusEnum.CLEARED) {
@@ -415,7 +411,6 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
                 }
 
                 synchronized (this) {
-                    running.set(false);
                     if(clearStatus == ClearStatusEnum.PREPARE_CLEAR){
                         clear();
                         return ;
@@ -463,7 +458,6 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
             }else if (globalSorter != null){
                 globalSorter.insertRow(unsafeRow);
             }else {
-                //globalMergeResult.insertRow(unsafeRow);
                 multiQueryHandler.handleSingleMergeResult(unsafeRow);
             }
 
@@ -473,165 +467,9 @@ public class DataNodeMergeManager extends AbstractDataNodeMerge {
         }catch (final Exception e) {
             e.printStackTrace();
             multiQueryHandler.handleDataProcessException(e);
-        }finally {
-            lock.unlock();
         }
     }
 
-
-    @Override
-    public void run() {
-
-        if (!running.compareAndSet(false, true)) {
-            return;
-        }
-
-        boolean nulpack = false;
-
-        try {
-            for (; ; ) {
-                if(clearStatus == ClearStatusEnum.PREPARE_CLEAR
-                        || clearStatus == ClearStatusEnum.CLEARED) {
-                    break;
-                }
-                final PackWraper pack = packs.poll();
-
-                if (pack == null) {
-                    nulpack = true;
-                    break;
-                }
-
-                if (pack == END_FLAG_PACK) {
-                	
-                	hasEndFlag = true;
-                	
-                	if(packs.peek()!=null){
-                		packs.add(pack);
-                		continue;
-                	}
-                	
-                     /**
-                     * 最后一个节点datenode发送了row eof packet说明了整个
-                     * 分片数据全部接收完成，进而将结果集全部发给你Mycat 客户端
-                     */
-                    final int warningCount = 0;
-                    final EOFPacket eofp = new EOFPacket();
-                    final ByteBuffer eof = ByteBuffer.allocate(9);
-                    BufferUtil.writeUB3(eof, eofp.calcPacketSize());
-                    eof.put(eofp.packetId);
-                    eof.put(eofp.fieldCount);
-                    BufferUtil.writeUB2(eof,warningCount);
-                    BufferUtil.writeUB2(eof,eofp.status);
-                    final ServerConnection source = multiQueryHandler.getSession().getSource();
-                    final byte[] array = eof.array();
-
-
-                    Iterator<UnsafeRow> iters = null;
-
-                    boolean isGroupOrSort=false;
-
-                    if (unsafeRowGrouper != null){
-                        /**
-                         * group by里面需要排序情况
-                         */
-                        if (globalSorter != null){
-                            iters = unsafeRowGrouper.getResult(globalSorter);
-                        }else {
-                            iters = unsafeRowGrouper.getResult(globalMergeResult);
-                        }
-
-                        isGroupOrSort=true;
-
-                    }else if(globalSorter != null){
-
-                        iters = globalSorter.sort();
-
-                        isGroupOrSort=true;
-
-                    }else if (!isStreamOutputResult){
-
-                        iters = globalMergeResult.sort();
-
-                    }
-
-                    if(iters != null){
-                        multiQueryHandler.outputMergeResult(source,array,iters,isMiddleResultDone,isGroupOrSort);
-                     }    
-                    break;
-                }
-
-                unsafeRow = new UnsafeRow(fieldCount);
-                bufferHolder = new BufferHolder(unsafeRow,0);
-                unsafeRowWriter = new UnsafeRowWriter(bufferHolder,fieldCount);
-                bufferHolder.reset();
-
-                /**
-                 *构造一行row，将对应的col填充.
-                 */
-                MySQLMessage mm = new MySQLMessage(pack.rowData);
-                
-                unsafeRowWriter.grow((mm.getRowLength(fieldCount) + 1 ) / 2);
-                mm.readUB3();
-                mm.read();
-                
-                int nullnum = 0;
-                for (int i = 0; i < fieldCount; i++) {
-                    byte[] colValue = mm.readBytesWithLength();
-                    if (colValue != null)
-                    	unsafeRowWriter.write(i,colValue);
-                    else
-                    {
-            	 		if(mergeColsIndex!=null&&mergeColsIndex.length>0){
-            	 			
-            	 			if(Arrays.binarySearch(mergeColsIndex, i)<0){
-            	 				nullnum++;
-        	             	}
-            	 		}
-            	 		unsafeRow.setNullAt(i);
-                    }
-                }
-                
-                if(mergeColsIndex!=null&&mergeColsIndex.length>0){
-                	if(nullnum == (fieldCount - mergeColsIndex.length)){
-                		if(!hasEndFlag){
-                			packs.add(pack);
-                        	continue;
-                		}
-                    }
-                }
-
-                unsafeRow.setTotalSize(bufferHolder.totalSize());
-
-                if(unsafeRowGrouper != null){
-                    unsafeRowGrouper.addRow(unsafeRow);
-                }else if (globalSorter != null){
-                    globalSorter.insertRow(unsafeRow);
-                }else {
-                    //globalMergeResult.insertRow(unsafeRow);
-                    multiQueryHandler.handleSingleMergeResult(unsafeRow);
-                }
-
-                unsafeRow = null;
-                bufferHolder = null;
-                unsafeRowWriter = null;
-            }
-
-        } catch (final Exception e) {
-        	e.printStackTrace();
-            multiQueryHandler.handleDataProcessException(e);
-        } finally {
-            synchronized (this) {
-                running.set(false);
-                if(clearStatus == ClearStatusEnum.PREPARE_CLEAR){
-                    clear();
-                    return ;
-                }
-            }
-            if (nulpack && !packs.isEmpty()) {
-                this.run();
-            }
-        }
-    }
     /**
      * 释放DataNodeMergeManager所申请的资源
      */

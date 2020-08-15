@@ -19,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Created by zagnix on 2016/7/6.
  */
-public abstract class AbstractDataNodeMerge implements Runnable{
+public abstract class AbstractDataNodeMerge {
 
 
     private static Logger LOGGER = Logger.getLogger(AbstractDataNodeMerge.class);
@@ -49,11 +49,6 @@ public abstract class AbstractDataNodeMerge implements Runnable{
     protected boolean isStreamOutputResult = false;
 
     /**
-     * rowData缓存队列
-     */
-    protected BlockingQueue<PackWraper> packs = new LinkedBlockingQueue<PackWraper>();
-
-    /**
      * 标志业务线程是否启动了？
      */
     protected final AtomicBoolean running = new AtomicBoolean(false);
@@ -81,14 +76,8 @@ public abstract class AbstractDataNodeMerge implements Runnable{
      * @author Uncle-pan
      * @since 2016-03-23
      */
-    protected final boolean addPack(final PackWraper pack){
+    protected final void addPack(final PackWraper pack){
         handle(pack);
-        if(running.get()){
-            return false;
-        }
-        final MycatServer server = MycatServer.getInstance();
-        server.getBusinessExecutor().execute(this);
-        return true;
     }
 
     /**
@@ -132,9 +121,6 @@ public abstract class AbstractDataNodeMerge implements Runnable{
         }
         return result;
     }
-
-    @Override
-    public abstract void run();
 
     public abstract void handle(PackWraper pack);
 

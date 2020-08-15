@@ -90,6 +90,9 @@ public class MycatConfig {
 		
 		//配置加载锁
 		this.lock = new ReentrantLock();
+
+		//自动重新加载配置
+		new ReloadConfigListener();
 	}
 
 	public SystemConfig getSystem() {

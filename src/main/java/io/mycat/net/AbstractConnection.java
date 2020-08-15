@@ -35,7 +35,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Strings;
 
+import io.mycat.MycatServer;
 import io.mycat.backend.mysql.CharsetUtil;
+import io.mycat.config.model.SystemConfig;
 import io.mycat.util.CompressUtil;
 import io.mycat.util.TimeUtil;
 
@@ -425,7 +427,20 @@ public abstract class AbstractConnection implements NIOConnection {
 
 	}
 
+	private void blockWrite(){
+		SystemConfig config= MycatServer.getInstance().getConfig().getSystem();
+		while(writeQueue.size()>=config.getBlockingWriteQueueSize()){
+			try{
+				Thread.sleep(config.getBlockingWriteQueueSleepTime());
+			}catch (Exception e){
+				LOGGER.error(e.getMessage());
+			}
+		}
+	}
+
 	private final void writeNotSend(ByteBuffer buffer) {
+		blockWrite();
+
 		if (isSupportCompress()) {
 			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer, this, compressUnfinishedDataQueue);
 			writeQueue.offer(newBuffer);
@@ -444,6 +459,7 @@ public abstract class AbstractConnection implements NIOConnection {
 
     @Override
 	public final void write(ByteBuffer buffer) {
+		blockWrite();
     	
 		if (isSupportCompress()) {
 			ByteBuffer newBuffer = CompressUtil.compressMysqlPacket(buffer, this, compressUnfinishedDataQueue);
@@ -568,6 +584,8 @@ public abstract class AbstractConnection implements NIOConnection {
 		while ((buffer = writeQueue.poll()) != null) {
 			recycle(buffer);
 		}
+
+		System.gc();
 	}
 	
 	protected int getPacketLength(ByteBuffer buffer, int offset) {

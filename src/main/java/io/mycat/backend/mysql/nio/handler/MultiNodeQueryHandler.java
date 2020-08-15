@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
-import io.mycat.config.model.SystemConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -929,15 +928,6 @@ public class MultiNodeQueryHandler extends MultiNodeHandler implements LoadDataR
 			// @since 2016-03-25
 			//conn.close(error);
 			return;
-		}
-
-		SystemConfig systemConfig=MycatServer.getInstance().getConfig().getSystem();
-		while(session.getSource().getWriteQueue().size()>systemConfig.getBlockingWriteQueueSize()) {
-			try {
-				Thread.sleep(systemConfig.getBlockingWriteQueueSleepTime());
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage());
-			}
 		}
 
 		lock.lock();
